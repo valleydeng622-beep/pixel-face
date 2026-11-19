@@ -1590,7 +1590,10 @@ var ACC_CATS=[
   {k:'accGlasses',n:'眼镜',en:'GLASSES',src:'head',items:[['none','无'],['round','圆框'],['square','方框'],['sun','墨镜'],['thin','细金框']]},
   {k:'earring',n:'耳饰',en:'EARRING',src:'head',items:[['none','无'],['stud','耳钉'],['ring','耳环'],['fang','长坠']]},
   {k:'accNeck',n:'项链',en:'NECKLACE',src:'neck',items:[['none','无'],['chain','细链'],['pearl','珍珠'],['heart','吊坠'],['choker','项圈']]},
-  {k:'accWrist',n:'手链',en:'BRACELET',src:'wrist',items:[['none','无'],['silver','银链'],['bead','串珠'],['red','红绳'],['leather','皮环']]},
+  {k:'accWrist',n:'手链',en:'BRACELET',src:'wrist',items:[['none','无'],['silver','银链'],['bead','串珠'],['red','红绳'],['leather','皮环']]}
+];
+/* 服装分类 */
+var CLOTH_CATS=[
   {k:'top',n:'上衣',en:'TOP',src:'body',dye:'topC',items:[['tee','T恤'],['shirt','衬衫'],['knit','针织衫'],['tank','背心']]},
   {k:'pants',n:'裤子',en:'PANTS',src:'legs',dye:'pantsC',items:[['long','长裤'],['short','短裤'],['cargo','工装裤']]},
   {k:'skirt',n:'裙子',en:'SKIRT',src:'legs',dye:'skirtC',items:[['none','无'],['a','A字裙'],['pleat','百褶裙'],['pencil','铅笔裙']]},
@@ -1598,6 +1601,17 @@ var ACC_CATS=[
   {k:'coat',n:'外套',en:'COAT',src:'body',dye:'coatC',items:[['none','无'],['cardigan','开衫'],['jacket','夹克'],['trench','风衣']]},
   {k:'socks',n:'袜子',en:'SOCKS',src:'foot',dye:'socksC',items:[['short','短袜'],['knee','及膝袜'],['long','长袜']]},
   {k:'shoes',n:'鞋子',en:'SHOES',src:'foot',dye:'shoesC',items:[['sneaker','运动鞋'],['boot','短靴'],['sandal','凉鞋'],['loafer','皮鞋']]}
+];
+/* 衣橱主分类：饰品收成一类，点进去再展开 6 个子类 */
+var WDRESS=[
+  {n:'饰品',en:'ACC',subs:ACC_CATS},
+  {n:'上衣',en:'TOP',cat:CLOTH_CATS[0]},
+  {n:'裤子',en:'PANTS',cat:CLOTH_CATS[1]},
+  {n:'裙子',en:'SKIRT',cat:CLOTH_CATS[2]},
+  {n:'连衣裙',en:'DRESS',cat:CLOTH_CATS[3]},
+  {n:'外套',en:'COAT',cat:CLOTH_CATS[4]},
+  {n:'袜子',en:'SOCKS',cat:CLOTH_CATS[5]},
+  {n:'鞋子',en:'SHOES',cat:CLOTH_CATS[6]}
 ];
 function accThumb(o,src){
   var cv=document.createElement('canvas'); cv.width=64; cv.height=64;
@@ -2935,7 +2949,7 @@ function exitRoom(){
 }
 
 /* ==================== 衣橱界面 ==================== */
-var dressCatIdx=0, dressOn=false;
+var dressMainIdx=0, dressSubIdx=0, dressOn=false;
 function accLabel(c,v){
   for(var i=0;i<c.items.length;i++) if(c.items[i][0]===v) return c.items[i][1];
   return '无';
@@ -2950,21 +2964,42 @@ function dressPreview(){
   g.fillStyle='rgba(120,90,60,.14)'; g.fillRect(16,113,16,3);
   drawCharFull(g,state,false);
 }
+function curDressCat(){
+  var m=WDRESS[dressMainIdx]||WDRESS[0];
+  if(m.subs) return m.subs[dressSubIdx]||m.subs[0];
+  return m.cat;
+}
 function dressBuild(){
   var catsEl=document.getElementById('dressCats'), optsEl=document.getElementById('dressOpts');
   if(!catsEl||!optsEl) return;
   catsEl.textContent='';
-  ACC_CATS.forEach(function(c,i){
+  WDRESS.forEach(function(m,i){
     var li=document.createElement('li');
     var b=document.createElement('button'); b.className='cat'; b.type='button';
-    b.setAttribute('aria-selected', i===dressCatIdx?'true':'false');
-    b.innerHTML='<span class="idx">'+pad(i+1)+'</span><span class="nm">'+c.n+
-                '</span><span class="ldr"></span><span class="vl">'+accLabel(c,state[c.k])+'</span>';
-    b.addEventListener('click', function(){ dressCatIdx=i; dressBuild(); sfx('tick'); });
+    b.setAttribute('aria-selected', i===dressMainIdx?'true':'false');
+    var mc = m.subs ? (m.subs[dressSubIdx]||m.subs[0]) : m.cat;
+    b.innerHTML='<span class="idx">'+pad(i+1)+'</span><span class="nm">'+m.n+
+                '</span><span class="ldr"></span><span class="vl">'+accLabel(mc,state[mc.k])+'</span>';
+    b.addEventListener('click', function(){ dressMainIdx=i; dressBuild(); sfx('tick'); });
     li.appendChild(b); catsEl.appendChild(li);
+    /* 饰品：展开 6 个子类 */
+    if(i===0 && m.subs && dressMainIdx===0){
+      m.subs.forEach(function(s,j){
+        var sli=document.createElement('li');
+        var sb=document.createElement('button'); sb.className='cat'; sb.type='button';
+        sb.style.marginLeft='16px';
+        sb.style.width='calc(100% - 16px)';
+        sb.setAttribute('aria-selected', j===dressSubIdx?'true':'false');
+        sb.innerHTML='<span class="idx">·</span><span class="nm">'+s.n+
+                     '</span><span class="ldr"></span><span class="vl">'+accLabel(s,state[s.k])+'</span>';
+        sb.addEventListener('click', function(){ dressSubIdx=j; dressBuild(); sfx('tick'); });
+        sli.appendChild(sb); catsEl.appendChild(sli);
+      });
+    }
   });
-  var c=ACC_CATS[dressCatIdx];
-  document.getElementById('dressTitle').innerHTML=c.n+'<em>'+c.en+'</em>';  var curIdx=0;
+  var c=curDressCat();
+  document.getElementById('dressTitle').innerHTML=c.n+'<em>'+c.en+'</em>';
+  var curIdx=0;
   c.items.forEach(function(it,i){ if(it[0]===state[c.k]) curIdx=i; });
   document.getElementById('dressCount').textContent=pad(curIdx+1)+' / '+pad(c.items.length);
   optsEl.textContent='';
