@@ -1196,72 +1196,97 @@ function drawEarring(g,f,style){
 var AC_G='#E8C86E', AC_GD='#C9A24A', AC_S='#CFD5DC', AC_SD='#9AA2AE', AC_DK='#2E2734';
 function accGeo(o){
   var f=FACE[o.face]||FACE.oval;
+  var bk=BACK[o.hair]||BACK.short;
   var b=BUILDS[o.build]||BUILDS.normal;
   var tw=b.tw+(FRAMES[o.frame]||0);
   var aw=ARMW[o.build]||5;
   if(o.frame==='broad') aw++; else if(o.frame==='narrow') aw--;
   var out=tw+1+aw;
   var sy=f.bot+6, hem=sy+27, shB=hem+9;
-  return {f:f,tw:tw,aw:aw,out:out,sy:sy,hem:hem,shB:shB,axL:CX-out,axR:CX+out-aw};
+  /* 头饰要跟着头发走：后发外缘半宽 + 发顶高度 */
+  var hw=headFull(f)+(bk.pad||4);
+  var hTop=f.top-(bk.crown||4);
+  return {f:f,tw:tw,aw:aw,out:out,sy:sy,hem:hem,shB:shB,axL:CX-out,axR:CX+out-aw,
+          hw:hw,hTop:hTop,style:o.hair};
 }
 var ACC_DRAW={
   accOrn:{
-    band:function(g,A){ var f=A.f, y=f.top+6, hw=hAt(f,y);
-      px(g,CX-hw+1,y,hw*2-2,2,'#C4556C');
-      px(g,CX-hw+1,y,hw*2-2,1,'#E07A8C');
-      px(g,CX-hw+1,y+2,1,2,'#A83E52'); px(g,CX+hw-2,y+2,1,2,'#A83E52');
+    /* 发带：贴着后发外缘绕一圈 */
+    band:function(g,A){ var y=A.hTop+5, hw=A.hw+1;
+      px(g,CX-hw,y,hw*2,3,'#C4556C');
+      px(g,CX-hw,y,hw*2,1,'#E07A8C');
+      px(g,CX-hw,y+1,hw*2,1,'#B04B60');
+      px(g,CX-hw+2,y+3,3,2,'#A83E52'); px(g,CX+hw-5,y+3,3,2,'#A83E52');
     },
-    star:function(g,A){ var f=A.f, x=CX+8, y=f.top+9;
+    /* 星星夹：夹在右侧发缘 */
+    star:function(g,A){ var x=CX+A.hw-4, y=A.hTop+7;
       px(g,x-1,y,1,1,AC_G); px(g,x+1,y,1,1,AC_G); px(g,x,y-1,1,3,AC_G);
       px(g,x-1,y+1,1,1,AC_GD); px(g,x+1,y+1,1,1,AC_GD); px(g,x,y-2,1,1,'#F6E4A8');
     },
-    bow:function(g,A){ var f=A.f, x=CX-11, y=f.top+8;
+    /* 蝴蝶结：夹在左侧发缘 */
+    bow:function(g,A){ var x=CX-A.hw+1, y=A.hTop+4;
       px(g,x,y,5,4,'#C4556C'); px(g,x+4,y+1,4,3,'#C4556C');
       px(g,x+2,y+1,2,2,'#A83E52'); px(g,x+1,y+1,1,1,'#E07A8C');
     },
-    clip:function(g,A){ var f=A.f;
-      px(g,CX+2,f.top+10,6,1,AC_G); px(g,CX+3,f.top+12,5,1,AC_G); px(g,CX+2,f.top+11,1,1,AC_GD);
+    /* 一字夹：斜插在额发上 */
+    clip:function(g,A){ var y=A.hTop+8, x=CX+3;
+      px(g,x,y,7,1,AC_G); px(g,x+1,y+2,6,1,AC_G);
+      px(g,x,y+1,1,1,AC_GD); px(g,x+7,y+2,1,1,AC_GD);
     },
-    cat:function(g,A){ var f=A.f, y=f.top-4;
-      px(g,CX-10,y,4,5,AC_DK); px(g,CX-9,y-1,3,2,AC_DK); px(g,CX-9,y+1,2,3,'#E8A0B0');
-      px(g,CX+6,y,4,5,AC_DK); px(g,CX+7,y-1,3,2,AC_DK); px(g,CX+7,y+1,2,3,'#E8A0B0');
+    /* 猫耳：长在发顶两侧 */
+    cat:function(g,A){ var y=A.hTop-1, hw=A.hw;
+      px(g,CX-hw+1,y,5,6,AC_DK); px(g,CX-hw+2,y-2,3,2,AC_DK); px(g,CX-hw+2,y+1,2,4,'#E8A0B0');
+      px(g,CX+hw-6,y,5,6,AC_DK); px(g,CX+hw-5,y-2,3,2,AC_DK); px(g,CX+hw-4,y+1,2,4,'#E8A0B0');
     }
   },
   accHat:{
-    beanie:function(g,A){ var f=A.f, t=f.top;
-      px(g,CX-9,t-6,18,5,'#4E6E8C');
-      px(g,CX-7,t-8,14,3,'#4E6E8C');
-      px(g,CX-8,t-7,4,3,'#6E94B4');
-      px(g,CX-10,t-1,20,6,'#4E6E8C');
-      px(g,CX-12,t+4,24,4,'#3B566E');
-      px(g,CX-12,t+4,24,1,'#6E94B4');
-      px(g,CX-3,t-10,6,3,'#F6F0E4'); px(g,CX-2,t-10,4,1,'#DCD2BC');
+    /* 毛线帽：盖住整个发顶，罗纹帽檐外扩 */
+    beanie:function(g,A){ var t=A.hTop, hw=A.hw+1;
+      px(g,CX-Math.round(hw*0.42),t-3,Math.round(hw*0.84),2,'#4E6E8C');
+      px(g,CX-Math.round(hw*0.66),t-1,Math.round(hw*1.32),2,'#4E6E8C');
+      px(g,CX-hw,t+1,hw*2,4,'#4E6E8C');
+      px(g,CX-hw-1,t+5,(hw+1)*2,4,'#3B566E');
+      px(g,CX-hw-1,t+5,(hw+1)*2,1,'#6E94B4');
+      for(var i=-hw;i<hw+1;i+=2) px(g,CX+i,t+6,1,3,'#33506A');
+      px(g,CX-Math.round(hw*0.6),t+2,3,2,'#6E94B4');
+      px(g,CX-2,t-5,5,3,'#F6F0E4'); px(g,CX-1,t-4,3,1,'#DCD2BC');
     },
-    cap:function(g,A){ var f=A.f, t=f.top;
-      px(g,CX-10,t-5,20,7,'#C4556C');
-      px(g,CX-7,t-8,14,4,'#C4556C');
-      px(g,CX-9,t-7,4,4,'#D4707F');
-      px(g,CX-10,t+2,20,2,'#A83E52');
-      px(g,CX+2,t+3,12,2,'#A83E52');
+    /* 棒球帽：帽体压住头发，帽檐朝前伸出去 */
+    cap:function(g,A){ var t=A.hTop, hw=A.hw+1;
+      px(g,CX-Math.round(hw*0.7),t-1,Math.round(hw*1.4),3,'#C4556C');
+      px(g,CX-hw,t+1,hw*2,4,'#C4556C');
+      px(g,CX-hw,t+1,1,4,'#A83E52'); px(g,CX+hw-1,t+1,1,4,'#A83E52');
+      px(g,CX-Math.round(hw*0.5),t+1,3,1,'#D4707F');
+      px(g,CX+1,t+5,hw+6,2,'#A83E52');
+      px(g,CX+1,t+7,hw+4,1,'#8E3344');
     },
-    beret:function(g,A){ var f=A.f, t=f.top;
-      px(g,CX-12,t-3,24,6,'#8A6AA0');
-      px(g,CX-8,t+2,16,2,'#6A4C7E');
-      px(g,CX+7,t-6,4,4,'#8A6AA0');
-      px(g,CX-10,t-3,5,2,'#A085B6');
+    /* 贝雷帽：扁圆、偏一侧，顶上带个小揪 */
+    beret:function(g,A){ var t=A.hTop, hw=A.hw+2;
+      px(g,CX-Math.round(hw*0.8),t-1,Math.round(hw*1.6),2,'#8A6AA0');
+      px(g,CX-hw,t+1,hw*2,4,'#8A6AA0');
+      px(g,CX-Math.round(hw*0.5),t-3,Math.round(hw*1.0),2,'#9B7BB0');
+      px(g,CX-hw,t+5,hw*2,1,'#6A4C7E');
+      px(g,CX+hw-3,t-2,2,2,'#6A4C7E');
+      px(g,CX-Math.round(hw*0.7),t+3,4,1,'#A085B6');
     },
-    bucket:function(g,A){ var f=A.f, t=f.top;
-      px(g,CX-9,t-5,18,8,'#C8A97C');
-      px(g,CX-9,t-5,18,1,'#E2D2B4');
-      px(g,CX-13,t+3,26,3,'#A88A5E');
-      px(g,CX-12,t+6,24,1,'#8A6E48');
+    /* 渔夫帽：帽身包住头发，帽檐下垂 */
+    bucket:function(g,A){ var t=A.hTop, hw=A.hw+1;
+      px(g,CX-Math.round(hw*0.7),t-1,Math.round(hw*1.4),2,'#C8A97C');
+      px(g,CX-hw,t+1,hw*2,4,'#C8A97C');
+      px(g,CX-hw,t+1,hw*2,1,'#E2D2B4');
+      px(g,CX-hw-3,t+5,(hw+3)*2,3,'#A88A5E');
+      px(g,CX-hw-3,t+5,(hw+3)*2,1,'#C4A87E');
+      px(g,CX-hw-2,t+8,(hw+2)*2,1,'#8A6E48');
     },
-    straw:function(g,A){ var f=A.f, t=f.top;
-      px(g,CX-7,t-6,14,8,'#E2CFA6');
-      px(g,CX-7,t-6,14,1,'#F2E6CC');
-      px(g,CX-7,t+2,14,1,'#C4556C');
-      px(g,CX-16,t+3,32,3,'#D8BC92');
-      px(g,CX-15,t+6,30,1,'#B99A6E');
+    /* 草帽：帽顶收窄，宽帽檐 */
+    straw:function(g,A){ var t=A.hTop, hw=A.hw, R=Math.min(hw+5,23);
+      px(g,CX-Math.round(hw*0.66),t,Math.round(hw*1.32),2,'#E2CFA6');
+      px(g,CX-hw,t+2,hw*2,3,'#E2CFA6');
+      px(g,CX-hw,t+2,hw*2,1,'#F2E6CC');
+      px(g,CX-hw,t+4,hw*2,1,'#C4556C');
+      px(g,CX-R,t+5,R*2,3,'#D8BC92');
+      px(g,CX-R,t+5,R*2,1,'#EFDDBA');
+      px(g,CX-R+1,t+8,R*2-2,1,'#B99A6E');
     }
   },
   accGlasses:{
@@ -1388,6 +1413,8 @@ function drawChar(g,o,blink){
   drawEarring(g,f,o.earring);
   /* 刘海压在最上面 */
   fr.draw(g,pal,f);
+  /* 头饰 / 帽子 / 眼镜压在刘海和头发之上 */
+  drawAccessories(g,o);
 }
 
 /* ==================== 选项数据 ==================== */
