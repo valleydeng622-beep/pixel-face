@@ -1787,6 +1787,7 @@ document.addEventListener('keydown',function(e){
   }
   if(roomOn){
     if(e.key==='Escape'){ e.preventDefault(); exitRoom(); }
+    else if(e.key===' '||e.key==='Spacebar'){ e.preventDefault(); pickAct(null); }
     return;
   }
   if(!modal.hidden){
@@ -2619,9 +2620,9 @@ function actDur(a){
   if(a.id==='dance'||a.id==='sing') d*=.62;
   return Math.round(d);
 }
-function pickAct(nowRef){
-  var pool=ACTS.filter(function(x){ return x!==roomAct; });
-  var next=pool[Math.floor(Math.random()*pool.length)]||ACTS[0];
+/* 让她走去某个动作：算路径、算时长，交给主循环去走 */
+function goToAct(next,nowRef){
+  if(!next) return;
   var p0=roomAct?posOf(roomAct):{X:118,Y:109};
   var p1=posOf(next);
   var ms = (nowRef!=null) ? nowRef : ((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now());
@@ -2630,7 +2631,34 @@ function pickAct(nowRef){
   actUntil=ms+walkMove.dur+actDur(next);
   var dEl=document.getElementById('roomDoing'); if(dEl) dEl.textContent='走过去…';
   document.getElementById('roomName').textContent=name||'未命名';
+}
+function pickAct(nowRef){
+  var pool=ACTS.filter(function(x){ return x!==roomAct; });
+  goToAct(pool[Math.floor(Math.random()*pool.length)]||ACTS[0],nowRef);
   sfx('move');
+}
+/* ---- 房间里的热区：点哪儿，她去哪 ---- */
+var SPOT_HIT=[
+  {spot:'bed',    x0:168,x1:286,y0:76, y1:166},
+  {spot:'desk',   x0:12, x1:108,y0:98, y1:162},
+  {spot:'rug',    x0:96, x1:200,y0:162,y1:180},
+  {spot:'window', x0:98, x1:188,y0:12, y1:92}
+];
+function spotAt(x,y){
+  for(var i=0;i<SPOT_HIT.length;i++){
+    var h=SPOT_HIT[i];
+    if(x>=h.x0&&x<=h.x1&&y>=h.y0&&y<=h.y1) return h.spot;
+  }
+  return 'floor';
+}
+/* 点地毯/床/桌子/窗：随机挑一个该地点能做的事，走过去 */
+function sendTo(spot){
+  var pool=ACTS.filter(function(a){ return a.spot===spot; });
+  if(!pool.length) pool=ACTS;
+  var next=pool[Math.floor(Math.random()*pool.length)];
+  if(next===roomAct && !walkMove){ sfx('move'); return; }
+  goToAct(next,null);
+  sfx('select');
 }
 function finishWalk(){
   if(!walkMove) return;
@@ -2759,15 +2787,23 @@ decoLoad();
   var b=document.getElementById('btnDeco');
   if(b) b.addEventListener('click', function(){ setDecoOpen(!decoOpen); sfx('tick'); });
   var cv=document.getElementById('roomCv');
-  function inWardrobe(e){
+  function roomPoint(e){
     var r=cv.getBoundingClientRect();
-    var x=(e.clientX-r.left)/r.width*ROOM_W, y=(e.clientY-r.top)/r.height*ROOM_H;
-    return x>=26&&x<=74&&y>=20&&y<=102;
+    return {x:(e.clientX-r.left)/r.width*ROOM_W, y:(e.clientY-r.top)/r.height*ROOM_H};
+  }
+  function inWardrobe(e){
+    var p=roomPoint(e);
+    return p.x>=26&&p.x<=74&&p.y>=20&&p.y<=102;
   }
   if(cv){
-    cv.addEventListener('click', function(e){ if(roomOn&&!dressOn&&inWardrobe(e)) openDresser(); });
+    cv.addEventListener('click', function(e){
+      if(!roomOn||dressOn) return;
+      if(inWardrobe(e)){ openDresser(); return; }
+      var p=roomPoint(e);
+      sendTo(spotAt(p.x,p.y));
+    });
     cv.addEventListener('mousemove', function(e){
-      cv.style.cursor=(roomOn&&!dressOn&&inWardrobe(e))?'pointer':'';
+      cv.style.cursor=(roomOn&&!dressOn)?'pointer':'';
     });
   }
   var cd=document.getElementById('btnDressClose');

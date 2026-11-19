@@ -1,0 +1,6 @@
+# Visual Studio 的缓存目录，不要进仓库
+.vs/
+
+# 编辑器临时文件
+*.swp
+*.sqlite
