@@ -483,6 +483,7 @@ h1 span{color:var(--gold)}
         </div>
         <div class="opts" id="dressOpts"></div>
       </div>
+      <div class="dye-row" id="dressDye" hidden></div>
     </div>
   </div>
   <div class="actions"><button class="btn" id="btnDressClose">回房间</button></div>
@@ -592,13 +593,332 @@ var BUILDS={
   plush:{tw:15,aw:4}
 };
 var FRAMES={narrow:-1, std:0, broad:1};
-function drawBody(g,f,skin,build,frame){
+
+/* ==================== 服装：色板 ==================== */
+var DYE=[
+  {n:'米白',base:'#F2EEE2',shade:'#D6CFBE',hi:'#FDFAF1',deep:'#B4AB9A'},
+  {n:'炭灰',base:'#4A4A54',shade:'#33333B',hi:'#63636F',deep:'#26262C'},
+  {n:'雾蓝',base:'#7C97B4',shade:'#5F7893',hi:'#A7BED4',deep:'#476074'},
+  {n:'藕粉',base:'#D9A8AE',shade:'#BC868E',hi:'#F0C6CB',deep:'#9A6870'},
+  {n:'苔绿',base:'#6E8A5A',shade:'#546E43',hi:'#90AB7A',deep:'#405638'},
+  {n:'酒红',base:'#8E3B44',shade:'#6E2A33',hi:'#AB5961',deep:'#521F29'},
+  {n:'芥黄',base:'#C9A24A',shade:'#A68436',hi:'#E3C171',deep:'#88692B'},
+  {n:'牛仔',base:'#4E6E96',shade:'#3A567A',hi:'#6F8DAE',deep:'#2B4360'}
+];
+function dyeOf(i){ var c=DYE[i|0]; return c&&c.base?c:DYE[0]; }
+
+/* ==================== 服装：单品表 ==================== */
+var TOPS={
+  tee:{n:'T恤',sleeve:'short'},
+  shirt:{n:'衬衫',sleeve:'short',collar:1,placket:1},
+  knit:{n:'针织衫',sleeve:'long',rib:1},
+  tank:{n:'背心',sleeve:'none'}
+};
+var COATS={
+  cardigan:{n:'开衫',open:1,long:1},
+  jacket:{n:'夹克',long:1},
+  trench:{n:'风衣',long:1,veryLong:1}
+};
+var PANTS={
+  long:{n:'长裤'},
+  short:{n:'短裤'},
+  cargo:{n:'工装裤',pocket:1}
+};
+var SKIRTS={
+  a:{n:'A字裙',flare:4},
+  pleat:{n:'百褶裙',flare:2,pleat:1},
+  pencil:{n:'铅笔裙',short:14}
+};
+var DRESSES={
+  slip:{n:'吊带裙',strap:'thin',flare:5,len:20},
+  vest:{n:'背心裙',strap:'wide',flare:3,len:22},
+  longdress:{n:'长裙',strap:'wide',flare:6,len:999}
+};
+var SOCKS={
+  short:{n:'短袜',top:'-5'},
+  knee:{n:'及膝袜',top:'-16'},
+  long:{n:'长袜',top:'-24'}
+};
+var SHOES={
+  sneaker:{n:'运动鞋'},
+  boot:{n:'短靴'},
+  sandal:{n:'凉鞋'},
+  loafer:{n:'皮鞋'}
+};
+
+/* ---------- 上身：躯干 + 肩坡 ---------- */
+function drawTopG(g,G,col,id){
+  var t=TOPS[id]||TOPS.tee;
+  var sh=[Math.round(G.out*0.56),Math.round(G.out*0.78),G.out-1,G.out];
+  rowsFill(g,sh,G.sy,1,INK);
+  rowsFill(g,sh,G.sy,0,col.base);
+  for(var i=0;i<4;i++){
+    px(g,CX-sh[i]+1,G.sy+i,1,1,col.shade);
+    px(g,CX+sh[i]-2,G.sy+i,1,1,col.shade);
+  }
+  var n=G.hem-(G.sy+4), tr=[], j;
+  for(j=0;j<n;j++) tr.push(G.tw);
+  rowsFill(g,tr,G.sy+4,1,INK);
+  rowsFill(g,tr,G.sy+4,0,col.base);
+  for(j=0;j<n;j++){
+    px(g,CX-G.tw+1,G.sy+4+j,1,1,col.shade);
+    px(g,CX+G.tw-2,G.sy+4+j,1,1,col.shade);
+  }
+  /* 领口 */
+  if(t.collar){
+    px(g,CX-4,G.sy,8,1,col.deep);
+    px(g,CX-3,G.sy+1,3,1,col.deep); px(g,CX+1,G.sy+1,3,1,col.deep);
+    px(g,CX-2,G.sy+2,2,1,col.hi); px(g,CX+1,G.sy+2,2,1,col.hi);
+  } else if(t.sleeve==='none'){
+    px(g,CX-5,G.sy+1,10,1,col.deep);
+    px(g,CX-4,G.sy+2,8,1,col.base);
+  } else {
+    px(g,CX-4,G.sy,8,1,col.shade);
+    px(g,CX-3,G.sy+1,6,1,col.shade);
+    px(g,CX-4,G.sy+1,1,1,col.deep); px(g,CX+3,G.sy+1,1,1,col.deep);
+  }
+  /* 下摆 */
+  px(g,CX-G.tw,G.hem,G.tw*2,1,col.shade);
+  px(g,CX-G.tw,G.hem+1,G.tw*2,1,col.deep);
+  /* 门襟 / 罗纹 / 褶皱 */
+  if(t.placket){
+    for(j=0;j<n;j+=3) px(g,CX,G.sy+4+j,1,1,col.deep);
+    px(g,CX-2,G.sy+7,2,2,col.shade);
+  }
+  if(t.rib){
+    for(var r=CX-G.tw+1;r<CX+G.tw-1;r+=2) px(g,r,G.hem-1,1,1,col.shade);
+    px(g,CX-G.tw+3,G.sy+14,1,5,col.shade);
+    px(g,CX+G.tw-4,G.sy+16,1,4,col.shade);
+  }
+  if(t.sleeve!=='none'){
+    px(g,CX-G.tw+3,G.sy+12,1,4,col.shade);
+    px(g,CX+G.tw-4,G.sy+13,1,3,col.shade);
+  }
+}
+
+/* ---------- 手臂皮肤 ---------- */
+function drawArmsSkin(g,G,skin){
+  for(var a=0;a<2;a++){
+    var ax=a===0?CX-G.out:CX+G.out-G.aw;
+    var outer=a===0?ax:ax+G.aw-1;
+    var inner=a===0?ax+G.aw-1:ax;
+    var armEnd=G.full?G.shB+2:G.hem-2;
+    var bh=armEnd-(G.sy+1);
+    px(g,ax,G.sy+1,G.aw,bh,skin.base);
+    px(g,outer,G.sy+1,1,bh,skin.shade);
+    px(g,inner,G.sy+2,1,bh-1,'#CEC7B5');
+    px(g,ax-1,G.sy+1,1,bh+1,INK);
+    px(g,ax+G.aw,G.sy+1,1,bh+1,INK);
+    px(g,ax+1,G.sy+1,1,3,skin.light);
+    /* 手 */
+    px(g,ax+1,armEnd,G.aw-2,3,skin.base);
+    px(g,ax-1,armEnd,1,3,INK);
+    px(g,ax+G.aw,armEnd,1,3,INK);
+    px(g,ax+1,armEnd+3,G.aw-2,1,INK);
+  }
+}
+
+/* ---------- 袖子 ---------- */
+function drawSleeves(g,G,col,id){
+  var t=TOPS[id]||TOPS.tee;
+  if(t.sleeve==='none') return;
+  var long=t.sleeve==='long';
+  var end=long?G.shB+1:G.sy+9;
+  for(var a=0;a<2;a++){
+    var ax=a===0?CX-G.out:CX+G.out-G.aw;
+    var outer=a===0?ax:ax+G.aw-1;
+    px(g,ax,G.sy+1,G.aw,end-G.sy-1,col.base);
+    px(g,outer,G.sy+1,1,end-G.sy-1,col.shade);
+    px(g,ax,G.sy+1,1,end-G.sy-1,INK);
+    px(g,ax+G.aw-1,G.sy+1,1,end-G.sy-1,INK);
+    px(g,ax+1,G.sy+1,G.aw-2,1,col.hi);
+    if(long){ px(g,ax,end,G.aw,1,col.deep); px(g,ax+1,end+1,G.aw-2,1,col.shade); }
+    else { px(g,ax,end-1,G.aw,1,col.shade); px(g,ax+1,end,G.aw-2,1,col.deep); }
+  }
+}
+
+/* ---------- 裤子 ---------- */
+function drawPantsG(g,G,col,id){
+  var p=PANTS[id]||PANTS.long;
+  var shY=G.shY, footY=G.footY, tw=G.tw, lw=G.lw;
+  var end=p.n==='短裤'?G.shB+1:footY+2;
+  for(var l=0;l<2;l++){
+    var lx=l===0?CX-tw+1:CX+1;
+    px(g,lx,shY,lw,end-shY,col.base);
+    px(g,lx+(l===0?0:lw-1),shY,1,end-shY,col.shade);
+    px(g,lx,shY,1,end-shY,INK);
+    px(g,lx+lw-1,shY,1,end-shY,INK);
+  }
+  /* 裆部 */
+  px(g,CX-tw+1,shY,tw*2-2,6,col.base);
+  px(g,CX,shY+1,1,5,col.shade);
+  /* 腰头 */
+  px(g,CX-tw+1,shY,tw*2-2,2,col.deep);
+  px(g,CX-tw+1,shY,tw*2-2,1,col.hi);
+  px(g,CX-1,shY+2,2,1,col.deep);
+  /* 裤脚 */
+  if(p.n!=='短裤'){
+    px(g,CX-tw+1,footY+1,lw,1,col.deep);
+    px(g,CX+1,footY+1,lw,1,col.deep);
+  }
+  if(p.pocket){
+    px(g,CX-tw+3,shY+12,3,4,col.shade); px(g,CX-tw+3,shY+12,3,1,col.deep);
+    px(g,CX+tw-6,shY+12,3,4,col.shade); px(g,CX+tw-6,shY+12,3,1,col.deep);
+  }
+}
+
+/* ---------- 裙子 ---------- */
+function drawSkirtG(g,G,col,id){
+  var t=SKIRTS[id]||SKIRTS.a;
+  var h=t.short||18, w0=G.tw-1, w1=G.tw+1+(t.flare||2);
+  for(var y=0;y<h;y++){
+    var w=Math.round(w0+(w1-w0)*(y/h));
+    px(g,CX-w,G.shY+y,w*2,1,col.base);
+    px(g,CX-w,G.shY+y,1,1,col.shade);
+    px(g,CX+w-1,G.shY+y,1,1,col.deep);
+    px(g,CX-w,G.shY+y,w*2,1,col.base);
+  }
+  /* 腰头 */
+  px(g,CX-w0,G.shY,w0*2,2,col.deep);
+  px(g,CX-w0,G.shY,w0*2,1,col.hi);
+  /* 褶 */
+  if(t.pleat){
+    for(var x=-w1+2;x<w1-1;x+=3) px(g,CX+x,G.shY+3,1,h-3,col.shade);
+  }
+  /* 收边 */
+  var wb=Math.round(w1);
+  px(g,CX-wb,G.shY+h,wb*2,1,col.deep);
+}
+
+/* ---------- 连衣裙 ---------- */
+function drawDressG(g,G,col,id){
+  var d=DRESSES[id]||DRESSES.slip;
+  /* 上身 */
+  var sh=[Math.round(G.out*0.56),Math.round(G.out*0.78),G.out-1,G.out];
+  rowsFill(g,sh,G.sy,1,INK);
+  rowsFill(g,sh,G.sy,0,col.base);
+  var bodEnd=G.shY, n=bodEnd-(G.sy+4), tr=[], j;
+  for(j=0;j<n;j++) tr.push(G.tw);
+  rowsFill(g,tr,G.sy+4,1,INK);
+  rowsFill(g,tr,G.sy+4,0,col.base);
+  for(j=0;j<n;j++){
+    px(g,CX-G.tw+1,G.sy+4+j,1,1,col.shade);
+    px(g,CX+G.tw-2,G.sy+4+j,1,1,col.shade);
+  }
+  /* 领口 / 肩带 */
+  if(d.strap==='thin'){
+    px(g,CX-5,G.sy,2,4,col.base); px(g,CX+3,G.sy,2,4,col.base);
+    px(g,CX-4,G.sy+1,8,1,col.deep);
+    px(g,CX-3,G.sy+2,6,1,col.shade);
+  } else {
+    px(g,CX-5,G.sy,3,3,col.base); px(g,CX+2,G.sy,3,3,col.base);
+    px(g,CX-4,G.sy+1,8,1,col.deep);
+  }
+  /* 裙身 */
+  var len=d.len, h=(!G.full)?0:((len>900)?Math.max(0,G.footY-6-G.shY):len);
+  var w0=G.tw, w1=G.tw+1+(d.flare||3);
+  for(var y=0;y<h;y++){
+    var w=Math.round(w0+(w1-w0)*Math.min(1,y/h*1.6));
+    px(g,CX-w,G.shY+y,w*2,1,col.base);
+    px(g,CX-w,G.shY+y,1,1,col.shade);
+    px(g,CX+w-1,G.shY+y,1,1,col.deep);
+  }
+  px(g,CX-Math.round(w1),G.shY+h,Math.round(w1)*2,1,col.deep);
+  /* 腰带 */
+  px(g,CX-G.tw,G.shY,G.tw*2,1,col.deep);
+}
+
+/* ---------- 外套 ---------- */
+function drawCoatG(g,G,col,id){
+  var c=COATS[id]||COATS.jacket;
+  var end=c.veryLong?G.shY+20:G.hem+4;
+  var sh=[Math.round(G.out*0.56),Math.round(G.out*0.78),G.out-1,G.out];
+  rowsFill(g,sh,G.sy,1,INK);
+  rowsFill(g,sh,G.sy,0,col.base);
+  for(var i=0;i<4;i++){
+    px(g,CX-sh[i]+1,G.sy+i,1,1,col.shade);
+    px(g,CX+sh[i]-2,G.sy+i,1,1,col.shade);
+  }
+  /* 前襟：开衫敞开，其余闭合 */
+  if(c.open){
+    px(g,CX-G.tw,G.sy+4,G.tw-2,end-G.sy-4,col.base);
+    px(g,CX+2,G.sy+4,G.tw-2,end-G.sy-4,col.base);
+    px(g,CX-G.tw,G.sy+4,1,end-G.sy-4,col.shade);
+    px(g,CX+G.tw-1,G.sy+4,1,end-G.sy-4,col.shade);
+    px(g,CX-G.tw,G.sy+4,G.tw-2,1,col.hi);
+  } else {
+    px(g,CX-G.tw,G.sy+4,G.tw*2,end-G.sy-4,col.base);
+    px(g,CX-G.tw,G.sy+4,1,end-G.sy-4,col.shade);
+    px(g,CX+G.tw-1,G.sy+4,1,end-G.sy-4,col.shade);
+    px(g,CX,G.sy+4,1,end-G.sy-4,col.deep);
+    /* 翻领 */
+    px(g,CX-5,G.sy+1,4,4,col.shade); px(g,CX+1,G.sy+1,4,4,col.shade);
+    px(g,CX-4,G.sy+2,3,1,col.hi);
+  }
+  /* 下摆 / 袖 */
+  px(g,CX-G.tw,end,c.open?G.tw-2:G.tw*2,1,col.deep);
+  if(c.open) px(g,CX+2,end,G.tw-2,1,col.deep);
+  for(var a=0;a<2;a++){
+    var ax=a===0?CX-G.out:CX+G.out-G.aw;
+    var outer=a===0?ax:ax+G.aw-1;
+    var sEnd=c.veryLong?G.shB+3:G.shB;
+    px(g,ax,G.sy+1,G.aw,sEnd-G.sy-1,col.base);
+    px(g,outer,G.sy+1,1,sEnd-G.sy-1,col.shade);
+    px(g,ax,G.sy+1,1,sEnd-G.sy-1,INK);
+    px(g,ax+G.aw-1,G.sy+1,1,sEnd-G.sy-1,INK);
+    px(g,ax,sEnd,G.aw,1,col.deep);
+  }
+  if(c.veryLong) px(g,CX-G.tw,G.sy+16,G.tw*2,2,col.deep);
+}
+
+/* ---------- 袜子 ---------- */
+function drawSocksG(g,G,o){
+  var sk=SOCKS[o.socks]; if(!sk) return;
+  var col=dyeOf(o.socksC);
+  var off=parseInt(sk.top,10);
+  var sTop=G.footY+off;
+  for(var l=0;l<2;l++){
+    var lx=l===0?CX-G.tw+1:CX+1;
+    px(g,lx,sTop,G.lw,G.footY+2-sTop,col.base);
+    px(g,lx+(l===0?0:G.lw-1),sTop,1,G.footY+2-sTop,col.shade);
+    px(g,lx,sTop,G.lw,1,col.hi);
+  }
+}
+
+/* ---------- 鞋 ---------- */
+function drawShoesG(g,G,o){
+  var sh=SHOES[o.shoes]; if(!sh) return;
+  var col=dyeOf(o.shoesC), footY=G.footY;
+  for(var s=0;s<2;s++){
+    var sx=s===0?CX-G.tw:CX+1;
+    var w=G.lw+1;
+    if(o.shoes==='sandal'){
+      px(g,sx,footY,w,2,col.base);
+      px(g,sx+1,footY-2,1,2,col.base); px(g,sx+w-2,footY-2,1,2,col.base);
+      px(g,sx,footY+2,w,1,col.deep);
+    } else {
+      var h=o.shoes==='boot'?9:3;
+      px(g,sx,footY-h+2,w,h,col.base);
+      px(g,sx,footY-h+2,w,1,col.shade);
+      px(g,sx,footY+2,w,1,col.deep);
+      px(g,sx-1,footY-h+2,1,h+1,INK);
+      px(g,sx+w,footY-h+2,1,h+1,INK);
+      px(g,sx,footY+3,w,1,INK);
+      if(o.shoes==='sneaker'){ px(g,sx+1,footY,2,1,col.hi); px(g,sx+w-3,footY,2,1,col.hi); }
+      if(o.shoes==='loafer'){ px(g,sx+2,footY-1,3,1,col.hi); }
+    }
+  }
+}
+function drawBody(g,f,skin,build,frame,o){
+  o=o||{};
   var b=BUILDS[build]||BUILDS.normal;
   var tw=b.tw+(FRAMES[frame]||0), aw=b.aw;
-  var out=tw+1+aw;               /* 手臂外缘距中轴 */
+  var out=tw+1+aw;
   var bot=f.top+f.w.length-1;
-  var ny=bot-1;                  /* 脖子起点 */
-  var sy=bot+6;                  /* 肩线 */
+  var ny=bot-1;
+  var sy=bot+6;
+  var G={f:f,tw:tw,aw:aw,out:out,sy:sy,hem:CH-1,shY:CH,shB:CH,legTop:CH,footY:CH,lw:tw-2,
+         full:false,bot:bot,ny:ny};
 
   /* 脖子 */
   px(g,CX-4,ny,8,sy-ny,skin.base);
@@ -609,58 +929,13 @@ function drawBody(g,f,skin,build,frame){
   px(g,CX-4,sy-1,3,1,skin.shade);
   px(g,CX+1,sy-1,3,1,skin.light);
 
-  /* 肩坡：由骨架宽度推出 */
-  var sh=[Math.round(out*0.56),Math.round(out*0.78),out-1,out];
-  rowsFill(g,sh,sy,1,INK);
-  rowsFill(g,sh,sy,0,TEE.base);
-  for(var i=0;i<4;i++){
-    px(g,CX-sh[i]+1,sy+i,1,1,TEE.shade);
-    px(g,CX+sh[i]-2,sy+i,1,1,TEE.shade);
-  }
-
-  /* 躯干 */
-  var tr=[], n=CH-(sy+4);
-  for(var j=0;j<n;j++) tr.push(tw);
-  rowsFill(g,tr,sy+4,1,INK);
-  rowsFill(g,tr,sy+4,0,TEE.base);
-  for(var j2=0;j2<n;j2++){
-    px(g,CX-tw+1,sy+4+j2,1,1,TEE.shade);
-    px(g,CX+tw-2,sy+4+j2,1,1,TEE.shade);
-  }
-
-  /* 手臂：短袖 + 露出的上臂 */
-  for(var a=0;a<2;a++){
-    var ax = a===0 ? CX-out : CX+out-aw;
-    var inner = a===0 ? ax+aw-1 : ax;
-    var outer = a===0 ? ax : ax+aw-1;
-    px(g,ax,sy+1,aw,8,TEE.base);
-    px(g,outer,sy+1,1,8,TEE.shade);
-    px(g,inner,sy+2,1,7,'#CEC7B5');
-    px(g,ax-1,sy+1,1,8,INK);
-    px(g,ax+aw,sy+1,1,8,INK);
-    px(g,ax,sy+7,aw,1,'#EAE5D8');
-    px(g,ax,sy+8,aw,1,TEE.shade);
-    px(g,ax+1,sy+9,aw-2,CH-sy-9,skin.base);
-    px(g,outer,sy+9,1,CH-sy-9,skin.shade);
-    px(g,ax+1,sy+9,1,2,skin.light);
-    px(g,ax-1,sy+9,1,CH-sy-9,INK);
-    px(g,ax+aw,sy+9,1,CH-sy-9,INK);
-  }
-
-  /* 圆领 */
-  px(g,CX-4,sy,8,1,TEE.rib);
-  px(g,CX-3,sy+1,6,1,TEE.rib);
-  px(g,CX-4,sy+1,1,1,TEE.shade);
-  px(g,CX+3,sy+1,1,1,TEE.shade);
-
-  /* 下摆 */
-  px(g,CX-tw,CH-2,tw*2,1,TEE.shade);
-  px(g,CX-tw,CH-1,tw*2,1,'#C6BFAD');
-
-  /* 布料褶皱 */
-  px(g,CX-tw+3,sy+10,1,4,TEE.shade);
-  px(g,CX+tw-4,sy+11,1,3,TEE.shade);
-  px(g,CX-6,sy+6,1,3,TEE.shade);
+  /* 手臂 → 上身 → 袖 → 外套 */
+  drawArmsSkin(g,G,skin);
+  var dress=DRESSES[o.dress];
+  if(dress) drawDressG(g,G,dyeOf(o.dressC),o.dress);
+  else drawTopG(g,G,dyeOf(o.topC),o.top);
+  if(!dress) drawSleeves(g,G,dyeOf(o.topC),o.top);
+  if(COATS[o.coat]) drawCoatG(g,G,dyeOf(o.coatC),o.coat);
 }
 
 
@@ -668,22 +943,24 @@ function drawBody(g,f,skin,build,frame){
 var FW=48, FH=128, FBASE=118;
 var ARMW={slim:4,normal:5,plush:6};
 var LEGLEN={petite:-9, std:0, tall:9};
-function drawBodyFull(g,f,skin,build,frame,height){
-  var b=BUILDS[build]||BUILDS.normal;
-  var tw=b.tw+(FRAMES[frame]||0);
-  var aw=ARMW[build]||5;
-  if(frame==='broad') aw++;
-  else if(frame==='narrow') aw--;
+function drawBodyFull(g,f,skin,o){
+  o=o||{};
+  var b=BUILDS[o.build]||BUILDS.normal;
+  var tw=b.tw+(FRAMES[o.frame]||0);
+  var aw=ARMW[o.build]||5;
+  if(o.frame==='broad') aw++;
+  else if(o.frame==='narrow') aw--;
   var out=tw+1+aw;
-  var ll=LEGLEN[height]||0;
+  var ll=LEGLEN[o.height]||0;
   var bot=f.top+f.w.length-1;
-  var ny=bot-1;                    /* 32 */
-  var sy=bot+6;                    /* 39 */
-  var hem=sy+27;                   /* 66 */
-  var shY=hem+2;                   /* 68 */
-  var shB=shY+7;                   /* 75 */
-  var legTop=shB+1;                /* 76 */
-  var footY=legTop+26+ll;          /* 102 + ll */
+  var ny=bot-1;
+  var sy=bot+6;
+  var hem=sy+27;
+  var shY=hem+2;
+  var shB=shY+7;
+  var legTop=shB+1;
+  var footY=legTop+26+ll;
+  var G={f:f,tw:tw,aw:aw,out:out,sy:sy,hem:hem,shY:shY,shB:shB,legTop:legTop,footY:footY,lw:tw-2,ll:ll,bot:bot,ny:ny,full:true};
 
   /* 脖子 */
   px(g,CX-4,ny,8,sy-ny,skin.base);
@@ -705,80 +982,22 @@ function drawBodyFull(g,f,skin,build,frame,height){
     px(g,lx+lw,legTop,1,lh,INK);
   }
 
-  /* 短裤 */
-  px(g,CX-tw+1,shY,tw*2-2,shB-shY+1,'#3E4A6E');
-  px(g,CX-tw+1,shY,tw*2-2,1,'#4E5C82');
-  px(g,CX-1,shY,2,shB-shY+1,'#2C3654');
-  px(g,CX-tw,shY,1,shB-shY+1,INK);
-  px(g,CX+tw-1,shY,1,shB-shY+1,INK);
-  px(g,CX-tw+1,shB,tw*2-2,1,'#2C3654');
+  /* 袜子 → 下装 → 鞋 */
+  drawSocksG(g,G,o);
+  var dress=DRESSES[o.dress];
+  if(dress) drawDressG(g,G,dyeOf(o.dressC),o.dress);
+  else if(SKIRTS[o.skirt]) drawSkirtG(g,G,dyeOf(o.skirtC),o.skirt);
+  else if(PANTS[o.pants]) drawPantsG(g,G,dyeOf(o.pantsC),o.pants);
+  drawShoesG(g,G,o);
 
-  /* 鞋 */
-  for(var sh2=0;sh2<2;sh2++){
-    var sx2=sh2===0?CX-tw:CX+1;
-    px(g,sx2,footY,lw+1,2,'#4A3A30');
-    px(g,sx2,footY,lw+1,1,'#5E4A3C');
-    px(g,sx2,footY+2,lw+1,1,'#2A211C');
-    px(g,sx2-1,footY,1,3,INK);
-    px(g,sx2+lw+1,footY,1,3,INK);
-    px(g,sx2,footY+3,lw+1,1,INK);
-  }
+  /* 上身 → 手臂 → 外套 */
+  if(!dress) drawTopG(g,G,dyeOf(o.topC),o.top);
+  drawArmsSkin(g,G,skin);
+  if(!dress) drawSleeves(g,G,dyeOf(o.topC),o.top);
+  if(COATS[o.coat]) drawCoatG(g,G,dyeOf(o.coatC),o.coat);
 
-  /* 肩坡 */
-  var sh=[Math.round(out*0.56),Math.round(out*0.78),out-1,out];
-  rowsFill(g,sh,sy,1,INK);
-  rowsFill(g,sh,sy,0,TEE.base);
-  for(var i=0;i<4;i++){
-    px(g,CX-sh[i]+1,sy+i,1,1,TEE.shade);
-    px(g,CX+sh[i]-2,sy+i,1,1,TEE.shade);
-  }
-
-  /* 躯干 */
-  var tr=[], n=hem-(sy+4);
-  for(var j=0;j<n;j++) tr.push(tw);
-  rowsFill(g,tr,sy+4,1,INK);
-  rowsFill(g,tr,sy+4,0,TEE.base);
-  for(var j2=0;j2<n;j2++){
-    px(g,CX-tw+1,sy+4+j2,1,1,TEE.shade);
-    px(g,CX+tw-2,sy+4+j2,1,1,TEE.shade);
-  }
-
-  /* 手臂 */
-  for(var a=0;a<2;a++){
-    var ax=a===0?CX-out:CX+out-aw;
-    var outer=a===0?ax:ax+aw-1;
-    var inner=a===0?ax+aw-1:ax;
-    var armEnd=shB+2;
-    var bh=armEnd-(sy+9);
-    px(g,ax,sy+1,aw,8,TEE.base);
-    px(g,outer,sy+1,1,8,TEE.shade);
-    px(g,inner,sy+2,1,7,'#CEC7B5');
-    px(g,ax-1,sy+1,1,8,INK);
-    px(g,ax+aw,sy+1,1,8,INK);
-    px(g,ax,sy+7,aw,1,'#EAE5D8');
-    px(g,ax,sy+8,aw,1,TEE.shade);
-    px(g,ax+1,sy+9,aw-2,bh,skin.base);
-    px(g,outer,sy+9,1,bh,skin.shade);
-    px(g,ax+1,sy+9,1,3,skin.light);
-    px(g,ax-1,sy+9,1,bh,INK);
-    px(g,ax+aw,sy+9,1,bh,INK);
-    /* 手 */
-    px(g,ax+1,armEnd,aw-2,3,skin.base);
-    px(g,ax-1,armEnd,1,3,INK);
-    px(g,ax+aw,armEnd,1,3,INK);
-    px(g,ax+1,armEnd+3,aw-2,1,INK);
-  }
-
-  /* 圆领 / 下摆 / 褶皱 */
-  px(g,CX-4,sy,8,1,TEE.rib);
-  px(g,CX-3,sy+1,6,1,TEE.rib);
-  px(g,CX-4,sy+1,1,1,TEE.shade);
-  px(g,CX+3,sy+1,1,1,TEE.shade);
-  px(g,CX-tw,hem,tw*2,1,TEE.shade);
-  px(g,CX-tw,hem+1,tw*2,1,'#C6BFAD');
-  px(g,CX-tw+3,sy+16,1,5,TEE.shade);
-  px(g,CX+tw-4,sy+18,1,4,TEE.shade);
-  px(g,CX-6,sy+8,1,4,TEE.shade);
+  /* 底色：连衣裙没选时露出的腰线 */
+  if(!dress && SKIRTS[o.skirt]) px(g,CX-tw+1,shY-1,tw*2-2,1,INK);
 }
 
 function drawCharFull(g,o,blink){
@@ -798,7 +1017,7 @@ function drawCharFull(g,o,blink){
   hairMass(g,pal,f,bk);
   if(bk.tail==='braid') tailBraid(g,pal,f);
   hairVeins(g,pal,f,bk);
-  drawBodyFull(g,f,skin,o.build,o.frame,o.height);
+  drawBodyFull(g,f,skin,o);
   drawHead(g,f,skin);
   drawBrows(g,f,pal,o.brow);
   drawEyes(g,f,iris,skin,o.eye,blink);
@@ -1373,6 +1592,27 @@ var ACC_CATS=[
   {k:'accNeck',n:'项链',en:'NECKLACE',src:'neck',items:[['none','无'],['chain','细链'],['pearl','珍珠'],['heart','吊坠'],['choker','项圈']]},
   {k:'accWrist',n:'手链',en:'BRACELET',src:'wrist',items:[['none','无'],['silver','银链'],['bead','串珠'],['red','红绳'],['leather','皮环']]}
 ];
+/* 服装分类 */
+var CLOTH_CATS=[
+  {k:'top',n:'上衣',en:'TOP',src:'body',dye:'topC',items:[['tee','T恤'],['shirt','衬衫'],['knit','针织衫'],['tank','背心']]},
+  {k:'pants',n:'裤子',en:'PANTS',src:'legs',dye:'pantsC',items:[['long','长裤'],['short','短裤'],['cargo','工装裤']]},
+  {k:'skirt',n:'裙子',en:'SKIRT',src:'legs',dye:'skirtC',items:[['none','无'],['a','A字裙'],['pleat','百褶裙'],['pencil','铅笔裙']]},
+  {k:'dress',n:'连衣裙',en:'DRESS',src:'body',dye:'dressC',items:[['none','无'],['slip','吊带裙'],['vest','背心裙'],['longdress','长裙']]},
+  {k:'coat',n:'外套',en:'COAT',src:'body',dye:'coatC',items:[['none','无'],['cardigan','开衫'],['jacket','夹克'],['trench','风衣']]},
+  {k:'socks',n:'袜子',en:'SOCKS',src:'foot',dye:'socksC',items:[['short','短袜'],['knee','及膝袜'],['long','长袜']]},
+  {k:'shoes',n:'鞋子',en:'SHOES',src:'foot',dye:'shoesC',items:[['sneaker','运动鞋'],['boot','短靴'],['sandal','凉鞋'],['loafer','皮鞋']]}
+];
+/* 衣橱主分类：饰品收成一类，点进去再展开 6 个子类 */
+var WDRESS=[
+  {n:'饰品',en:'ACC',subs:ACC_CATS},
+  {n:'上衣',en:'TOP',cat:CLOTH_CATS[0]},
+  {n:'裤子',en:'PANTS',cat:CLOTH_CATS[1]},
+  {n:'裙子',en:'SKIRT',cat:CLOTH_CATS[2]},
+  {n:'连衣裙',en:'DRESS',cat:CLOTH_CATS[3]},
+  {n:'外套',en:'COAT',cat:CLOTH_CATS[4]},
+  {n:'袜子',en:'SOCKS',cat:CLOTH_CATS[5]},
+  {n:'鞋子',en:'SHOES',cat:CLOTH_CATS[6]}
+];
 function accThumb(o,src){
   var cv=document.createElement('canvas'); cv.width=64; cv.height=64;
   var g=cv.getContext('2d'); g.imageSmoothingEnabled=false;
@@ -1381,6 +1621,9 @@ function accThumb(o,src){
   drawCharFull(fg,o,false);
   if(src==='wrist') g.drawImage(fb,4,50,32,32,0,0,64,64);
   else if(src==='neck') g.drawImage(fb,8,24,32,32,0,0,64,64);
+  else if(src==='body') g.drawImage(fb,4,44,40,40,0,0,64,64);
+  else if(src==='legs') g.drawImage(fb,6,74,36,36,0,0,64,64);
+  else if(src==='foot') g.drawImage(fb,6,96,36,36,0,0,64,64);
   else g.drawImage(fb,8,0,32,32,0,0,64,64);
   return cv;
 }
@@ -1402,7 +1645,7 @@ function drawChar(g,o,blink){
   hairMass(g,pal,f,bk);
   if(bk.tail==='braid') tailBraid(g,pal,f);
   hairVeins(g,pal,f,bk);
-  drawBody(g,f,skin,o.build,o.frame);
+  drawBody(g,f,skin,o.build,o.frame,o);
   drawHead(g,f,skin);
   drawBrows(g,f,pal,o.brow);
   drawEyes(g,f,iris,skin,o.eye,blink);
@@ -1470,7 +1713,10 @@ var VIEW=CATS.filter(function(c){ return c.page===page; });
 
 var DEFAULTS={hair:'short',bangs:'air',hairColor:'brown',face:'oval',skin:'fair',eye:'almon',
   liner:'natural',build:'normal',frame:'std',height:'std',eyeColor:'amber',brow:'arch',nose:'dot',mouth:'smile',blush:'soft',earring:'none',
-  accOrn:'none',accHat:'none',accGlasses:'none',accNeck:'none',accWrist:'none'};
+  accOrn:'none',accHat:'none',accGlasses:'none',accNeck:'none',accWrist:'none',
+  top:'tee',topC:0, pants:'long',pantsC:7, skirt:'none',skirtC:3,
+  dress:'none',dressC:5, coat:'none',coatC:1,
+  socks:'short',socksC:0, shoes:'sneaker',shoesC:1};
 var state=Object.assign({},DEFAULTS), catIdx=0, optIdx=0, name='小满';
 var SAVE_KEY='pixeljrpg.char.v3';
 
@@ -2703,7 +2949,7 @@ function exitRoom(){
 }
 
 /* ==================== 衣橱界面 ==================== */
-var dressCatIdx=0, dressOn=false;
+var dressMainIdx=0, dressSubIdx=0, dressOn=false;
 function accLabel(c,v){
   for(var i=0;i<c.items.length;i++) if(c.items[i][0]===v) return c.items[i][1];
   return '无';
@@ -2718,20 +2964,40 @@ function dressPreview(){
   g.fillStyle='rgba(120,90,60,.14)'; g.fillRect(16,113,16,3);
   drawCharFull(g,state,false);
 }
+function curDressCat(){
+  var m=WDRESS[dressMainIdx]||WDRESS[0];
+  if(m.subs) return m.subs[dressSubIdx]||m.subs[0];
+  return m.cat;
+}
 function dressBuild(){
   var catsEl=document.getElementById('dressCats'), optsEl=document.getElementById('dressOpts');
   if(!catsEl||!optsEl) return;
   catsEl.textContent='';
-  ACC_CATS.forEach(function(c,i){
+  WDRESS.forEach(function(m,i){
     var li=document.createElement('li');
     var b=document.createElement('button'); b.className='cat'; b.type='button';
-    b.setAttribute('aria-selected', i===dressCatIdx?'true':'false');
-    b.innerHTML='<span class="idx">'+pad(i+1)+'</span><span class="nm">'+c.n+
-                '</span><span class="ldr"></span><span class="vl">'+accLabel(c,state[c.k])+'</span>';
-    b.addEventListener('click', function(){ dressCatIdx=i; dressBuild(); sfx('tick'); });
+    b.setAttribute('aria-selected', i===dressMainIdx?'true':'false');
+    var mc = m.subs ? (m.subs[dressSubIdx]||m.subs[0]) : m.cat;
+    b.innerHTML='<span class="idx">'+pad(i+1)+'</span><span class="nm">'+m.n+
+                '</span><span class="ldr"></span><span class="vl">'+accLabel(mc,state[mc.k])+'</span>';
+    b.addEventListener('click', function(){ dressMainIdx=i; dressBuild(); sfx('tick'); });
     li.appendChild(b); catsEl.appendChild(li);
+    /* 饰品：展开 6 个子类 */
+    if(i===0 && m.subs && dressMainIdx===0){
+      m.subs.forEach(function(s,j){
+        var sli=document.createElement('li');
+        var sb=document.createElement('button'); sb.className='cat'; sb.type='button';
+        sb.style.marginLeft='16px';
+        sb.style.width='calc(100% - 16px)';
+        sb.setAttribute('aria-selected', j===dressSubIdx?'true':'false');
+        sb.innerHTML='<span class="idx">·</span><span class="nm">'+s.n+
+                     '</span><span class="ldr"></span><span class="vl">'+accLabel(s,state[s.k])+'</span>';
+        sb.addEventListener('click', function(){ dressSubIdx=j; dressBuild(); sfx('tick'); });
+        sli.appendChild(sb); catsEl.appendChild(sli);
+      });
+    }
   });
-  var c=ACC_CATS[dressCatIdx];
+  var c=curDressCat();
   document.getElementById('dressTitle').innerHTML=c.n+'<em>'+c.en+'</em>';
   var curIdx=0;
   c.items.forEach(function(it,i){ if(it[0]===state[c.k]) curIdx=i; });
@@ -2745,10 +3011,38 @@ function dressBuild(){
     b.appendChild(sp);
     b.setAttribute('aria-selected', state[c.k]===it[0]?'true':'false');
     b.addEventListener('click', function(){
-      state[c.k]=it[0]; save(); bufAge=99; sfx('select'); dressBuild();
+      state[c.k]=it[0];
+      /* 裙子 / 连衣裙互斥：选了一个，另一个自动摘掉 */
+      if(c.k==='dress' && it[0]!=='none') state.skirt='none';
+      if(c.k==='skirt' && it[0]!=='none') state.dress='none';
+      save(); bufAge=99; sfx('select'); dressBuild();
     });
     optsEl.appendChild(b);
   });
+  /* 颜色行：这件单品可以染 8 种颜色 */
+  var dyeEl=document.getElementById('dressDye');
+  if(dyeEl){
+    if(c.dye){
+      dyeEl.hidden=false;
+      dyeEl.textContent='';
+      dyeEl.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:6px 2px 0';
+      var lab=document.createElement('span');
+      lab.textContent='颜色';
+      lab.style.cssText='font-size:11px;letter-spacing:.08em;color:#8A7A66;margin-right:6px';
+      dyeEl.appendChild(lab);
+      if(typeof state[c.dye]!=='number') state[c.dye]=0;
+      DYE.forEach(function(d,di){
+        var sw=document.createElement('button');
+        sw.type='button'; sw.title=d.n; sw.setAttribute('aria-label',d.n);
+        sw.style.cssText='width:20px;height:20px;padding:0;border-radius:3px;cursor:pointer;background:'+d.base+
+          ';border:2px solid '+((state[c.dye]|0)===di?'#3A2E28':'rgba(0,0,0,0)');
+        sw.addEventListener('click', function(){
+          state[c.dye]=di; save(); bufAge=99; sfx('select'); dressBuild();
+        });
+        dyeEl.appendChild(sw);
+      });
+    } else { dyeEl.hidden=true; dyeEl.textContent=''; }
+  }
   dressPreview();
 }
 function openDresser(){
